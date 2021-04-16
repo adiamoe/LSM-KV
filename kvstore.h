@@ -1,11 +1,16 @@
 #pragma once
 
 #include "kvstore_api.h"
+#include "SkipList.h"
+using namespace std;
+
+
 
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
 private:
-
+    SkipList *memTable;
+    //todo:内存池，用于储存SSTable中的索引
 public:
 	KVStore(const std::string &dir);
 

@@ -1,20 +1,25 @@
 #include "kvstore.h"
 #include <string>
+#include <iostream>
 
 KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
 {
+    memTable = new SkipList;
 }
 
+//todo:将 MemTable 中的所有数据以 SSTable 形式写回
 KVStore::~KVStore()
 {
+
 }
 
 /**
  * Insert/Update the key-value pair.
  * No return values for simplicity.
  */
-void KVStore::put(uint64_t key, const std::string &s)
+void KVStore::put(uint64_t key, const string &s)
 {
+    memTable->put(key, s);
 }
 /**
  * Returns the (string) value of the given key.
@@ -22,7 +27,7 @@ void KVStore::put(uint64_t key, const std::string &s)
  */
 std::string KVStore::get(uint64_t key)
 {
-	return "";
+	return memTable->get(key);
 }
 /**
  * Delete the given key-value pair if it exists.
@@ -30,7 +35,7 @@ std::string KVStore::get(uint64_t key)
  */
 bool KVStore::del(uint64_t key)
 {
-	return false;
+	return memTable->remove(key);
 }
 
 /**
@@ -39,4 +44,5 @@ bool KVStore::del(uint64_t key)
  */
 void KVStore::reset()
 {
+    delete memTable;
 }
