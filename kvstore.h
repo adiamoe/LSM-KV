@@ -5,11 +5,12 @@
 using namespace std;
 
 
-
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
 private:
     SkipList *memTable;
+    string dir;
+    vector<int> level;
     //todo:内存池，用于储存SSTable中的索引
 public:
 	KVStore(const std::string &dir);
