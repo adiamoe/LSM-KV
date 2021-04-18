@@ -10,7 +10,7 @@ class KVStore : public KVStoreAPI {
 private:
     SkipList *memTable;
     string dir;
-    vector<int> level;
+    vector<int> Level; //记录对应层的文件数目
     //todo:内存池，用于储存SSTable中的索引
 public:
 	KVStore(const std::string &dir);
@@ -25,4 +25,7 @@ public:
 
 	void reset() override;
 
+	void compactionForLevel0();
+
+	void compactionForLeveln(int level);
 };

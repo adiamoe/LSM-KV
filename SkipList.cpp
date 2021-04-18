@@ -32,7 +32,7 @@ void SkipList::put(int64_t key, const string &value)
     vector<Node*> pathList;    //从上至下记录搜索路径
     Node *p = head;
     while(p){
-        while(p->right && p->right->key < key){
+        while(p->right && p->right->key <= key){
             p = p->right;
         }
         pathList.push_back(p);
@@ -70,6 +70,10 @@ void SkipList::put(int64_t key, const string &value)
     }
 }
 
+/*
+ * 删除时无论有没有这个元素，都需要插入“~DELETE~”，因此put可以取代删除的功能
+ */
+/*
 bool SkipList::remove(int64_t key)
 {
     Node *p = head, *q, *pos;
@@ -97,7 +101,7 @@ bool SkipList::remove(int64_t key)
         p = p->down;
     }
     return false;
-}
+}*/
 
 Node* SkipList::GetFirstNode()
 {
@@ -111,6 +115,8 @@ Node* SkipList::GetFirstNode()
 
 void SkipList::clear()
 {
+    if(!head)
+        return;
     //释放掉所有数据，防止内存泄漏
     Node *p = head, *q = nullptr, *down = nullptr;
     do
