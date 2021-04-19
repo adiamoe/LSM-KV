@@ -9,11 +9,13 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
     reset();
 }
 
-//todo:将 MemTable 中的所有数据以 SSTable 形式写回
+//将 MemTable 中的所有数据以 SSTable 形式写进磁盘
 KVStore::~KVStore()
 {
-    /*if(memTable->getPairNum()!=0)
-        memTable->store(dir);*/
+    string path = dir + "/level-0";
+    memTable->store(++Level[0], path);
+    if(Level[0]==3)
+        compactionForLevel0();
     memTable->clear();
     delete memTable;
 }
@@ -36,7 +38,6 @@ void KVStore::put(uint64_t key, const string &s)
         if(!utils::dirExists(path))
             utils::mkdir(path.c_str());
         vector<string> ret;
-        int num = utils::scanDir(path, ret);
         if(Level[0]==2)
         {
             memTable->store(3, path);

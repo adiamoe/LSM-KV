@@ -41,11 +41,7 @@ public:
     //转换成SSTable占用的空间大小
     size_t memory;
 
-    //todo：如何计算转换后SSTable占用的空间大小
     SkipList():Size(0), head(nullptr), memory(32+10240), timeStamp(0), minKey(INT64_MAX), maxKey(INT64_MIN){}
-
-    //get the number of KV
-    int getPairNum() {return Size;}
 
     //get the value of key
     string get(int64_t key);
@@ -54,7 +50,7 @@ public:
     void put(int64_t key, const string &value);
 
     //remove the KV pair
-    bool remove(int64_t key);
+    //bool remove(int64_t key);
 
     //清空所有元素
     void clear();

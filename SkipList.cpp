@@ -7,6 +7,8 @@
 
 string SkipList::get(int64_t key)
 {
+    if(Size == 0)
+        return "";
     Node *p = head;
     while(p)
     {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "kvstore_api.h"
+#include "Table.h"
 #include "SkipList.h"
 using namespace std;
 
@@ -11,6 +12,7 @@ private:
     SkipList *memTable;
     string dir;
     vector<int> Level; //记录对应层的文件数目
+    vector<vector<Table>> SSTable;
     //todo:内存池，用于储存SSTable中的索引
 public:
 	KVStore(const std::string &dir);
