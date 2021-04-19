@@ -6,7 +6,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
     memTable = new SkipList;
     this->dir = dir;
     Level.push_back(0);
-    reset();
+    SSTable = nullptr;
 }
 
 //将 MemTable 中的所有数据以 SSTable 形式写进磁盘

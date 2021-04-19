@@ -4,8 +4,7 @@
 
 #include "Table.h"
 
-Table::Table(string &fileName, int lev) {
-    level = lev;
+Table::Table(string &fileName) {
     sstable = fileName;
     file = nullptr;
 }
@@ -23,9 +22,11 @@ string Table::getValue(uint64_t key) {
     if(offset.count(key)==0)
         return "";
 
-    uint32_t pos = offset[key];
-    uint64_t len = length[key];
-    file->seekg(pos);
+    auto iter = offset.find(key);
+    uint32_t pos1 = iter->second;
+    uint32_t pos2 = (++iter)->second;
+    uint64_t len = pos2 - pos1;
+    file->seekg(pos1);
     string ans;
     file->read((char *)(&ans), len);
     return ans;
@@ -33,15 +34,44 @@ string Table::getValue(uint64_t key) {
 
 void Table::traverse(map<int64_t, string> &pair) {
     assert(valid());
-    auto iter = offset.begin();
+    auto iter1 = offset.begin();
+    auto iter2 = offset.begin();
+    iter2++;
+
     string ans;
-    while(iter!=offset.end())
+    uint64_t len;
+    while(iter1!=offset.end())
     {
-        uint64_t len = length[iter->first];
-        file->seekg(iter->second);
+        if(iter2!=offset.end())
+        {
+            len = iter2->second - iter1->second;
+            iter2++;
+        }
+        else
+        {
+            file->seekg(0, ios::end);
+            len = file->tellg();
+        }
+        file->seekg(iter1->second);
         file->read((char *)(&ans), len);
-        pair[iter->first] = ans;
-        iter++;
+        pair[iter1->first] = ans;
+        iter1++;
+    }
+}
+
+void Table::open()
+{
+    file->open(sstable, ios::in|ios::binary);
+    file->read((char *)(&metadata), 4* sizeof(uint64_t));
+    file->read((char *)(&BloomFilter), BloomFilter.size());
+    int num = metadata[2];
+    uint64_t tempKey;
+    int32_t  tempOffset;
+    while(num--)
+    {
+        file->read((char*)(&tempKey), sizeof(uint64_t));
+        file->read((char*)(&tempOffset), sizeof(int32_t));
+        offset[tempKey] = tempOffset;
     }
 }
 

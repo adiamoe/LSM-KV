@@ -12,8 +12,7 @@ private:
     SkipList *memTable;
     string dir;
     vector<int> Level; //记录对应层的文件数目
-    vector<vector<Table>> SSTable;
-    //todo:内存池，用于储存SSTable中的索引
+    Table *SSTable;
 public:
 	KVStore(const std::string &dir);
 
