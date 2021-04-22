@@ -12,7 +12,7 @@ private:
     SkipList *memTable;
     string dir;
     vector<int> Level; //记录对应层的文件数目
-    Table *SSTable;
+    vector<vector<Table>> SSTable;
 public:
 	KVStore(const std::string &dir);
 

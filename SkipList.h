@@ -5,6 +5,7 @@
 #define LSM_KV_SKIPLIST_H
 
 #include "kvstore_api.h"
+#include "MurmurHash3.h"
 #include <vector>
 #include <string>
 #include <cmath>

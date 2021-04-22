@@ -1,12 +1,30 @@
 #include "kvstore.h"
 #include "utils.h"
 
+//todo:注意reset()
 KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
 {
     memTable = new SkipList;
     this->dir = dir;
     Level.push_back(0);
-    SSTable = nullptr;
+    reset();
+    vector<string> ret;
+    int num = utils::scanDir(dir, ret);
+    for(int i=0; i<num; ++i)
+    {
+        SSTable.emplace_back();
+        string path = dir + "/" + ret[i];
+        vector<string> file;
+        int numSST = utils::scanDir(path, file);
+        cout<<numSST<<endl;
+        for(int j=0; j<numSST; ++j)
+        {
+            string FileName = path + "/" + file[j];
+            Table sstable(FileName);
+            SSTable[i].push_back(sstable);
+        }
+    }
+    cout<<"!"<<endl;
 }
 
 //将 MemTable 中的所有数据以 SSTable 形式写进磁盘
@@ -27,18 +45,17 @@ KVStore::~KVStore()
 void KVStore::put(uint64_t key, const string &s)
 {
     string val = memTable->get(key);
-    if(val!="")
+    if(!val.empty())
         memTable->memory += s.size() - val.size();
     else
-        memTable->memory += 4 + 8 + s.size();  //索引值 + key + value所占的内存大小
+        memTable->memory += 4 + 8 + s.size() + 1;  //索引值 + key + value所占的内存大小 + "\0"
 
     if(memTable->memory > MEMTABLE)
     {
         string path = dir + "/level-0";
         if(!utils::dirExists(path))
             utils::mkdir(path.c_str());
-        vector<string> ret;
-        if(Level[0]==2)
+        /*if(Level[0]==2)
         {
             memTable->store(3, path);
             compactionForLevel0();
@@ -48,7 +65,14 @@ void KVStore::put(uint64_t key, const string &s)
         {
             Level[0]++;
             memTable->store(Level[0], path);
-        }
+        }*/
+        Level[0]++;
+        memTable->store(Level[0], path);
+        string newFile = path + "/SSTable" + to_string(Level[0]) + ".sst";
+        Table newTable(newFile);
+        if(SSTable.empty())
+            SSTable.emplace_back();
+        SSTable[0].push_back(newTable);
     }
     memTable->put(key, s);
 }
@@ -56,14 +80,34 @@ void KVStore::put(uint64_t key, const string &s)
  * Returns the (string) value of the given key.
  * An empty string indicates not found.
  */
+ //todo:考虑时间戳
 std::string KVStore::get(uint64_t key)
 {
 	string ans = memTable->get(key);
 
-	//当读到删除标记时，返回空
-	if(ans == "~DELETED~")
-	    return "";
-	return ans;
+	if(!ans.empty())
+    {
+	    if(ans=="~DELETED~")
+	        return "";
+	    else
+            return ans;
+    }
+	//cout<<"here!"<<endl;
+	for(const auto &tableList:SSTable)
+    {
+	    for(auto table = tableList.rbegin(); table!=tableList.rend(); ++table)
+        {
+	        string out = table->getValue(key);
+	        if(!out.empty())
+            {
+	            if(out=="~DELETED~")
+	                return "";
+	            else
+                    return out;
+            }
+        }
+    }
+	return "";
 }
 /**
  * Delete the given key-value pair if it exists.
@@ -71,15 +115,9 @@ std::string KVStore::get(uint64_t key)
  */
 bool KVStore::del(uint64_t key)
 {
-    if(get(key)!="")
-    {
-        put(key, "~DELETED~");
-        return true;
-    }
-    else{
-        put(key, "~DELETED~");
-        return false;
-    }
+    bool flag = !get(key).empty();
+    put(key, "~DELETED~");
+    return flag;
 }
 
 /**
@@ -119,9 +157,9 @@ void KVStore::compactionForLevel0()
         string file = path0 + "/" +ret[i];
         fstream fin(file, ios::in|ios::binary);
         fin.read((char*)(&metadata), 4*sizeof(uint64_t));
-        if(minKey>metadata[2])
+        if(minKey > metadata[2])
             minKey = metadata[2];
-        if(maxKey<metadata[3])
+        if(maxKey < metadata[3])
             maxKey = metadata[3];
     }
 
