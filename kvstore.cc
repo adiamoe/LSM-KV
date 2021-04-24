@@ -7,7 +7,9 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
     memTable = new SkipList;
     this->dir = dir;
     Level.push_back(0);
+
     reset();
+
     vector<string> ret;
     int num = utils::scanDir(dir, ret);
     for(int i=0; i<num; ++i)
@@ -62,7 +64,7 @@ void KVStore::put(uint64_t key, const string &s)
         string newFile = path + "/SSTable" + to_string(Level[0]) + ".sst";
         Table newTable(newFile);
         SSTable[0].push_back(newTable);
-        if(Level[0]==3)
+        if(Level[0]>UpperNum(0))
         {
             compactionForLevel0();
             Level[0] = 0;
@@ -121,13 +123,15 @@ bool KVStore::del(uint64_t key)
 void KVStore::reset()
 {
     memTable->clear();
-    for(int i=0; i<Level.size(); ++i)
+    vector<string> file;
+    int numDir = utils::scanDir(dir, file);
+    for(int i=0; i<numDir; ++i)
     {
-        string path = dir + "/level-" + to_string(i);
+        string path = dir + "/" + file[i];
         vector<string> ret;
-        int num = utils::scanDir(path, ret);
-        for(int i=0; i<num; ++i)
-            utils::rmfile((path + "/" +ret[i]).c_str());
+        int numSST = utils::scanDir(path, ret);
+        for(int j=0; j<numSST; ++j)
+            utils::rmfile((path + "/" +ret[j]).c_str());
         utils::rmdir(path.c_str());
     }
 }
@@ -146,6 +150,7 @@ void KVStore::compactionForLevel0()
     {
         utils::mkdir(path1.c_str());
         Level.push_back(0);
+        SSTable.emplace_back();
     }
 
     //遍历Level0中的SSTable，找到最大最小键
@@ -161,9 +166,17 @@ void KVStore::compactionForLevel0()
             tempMin = table.getMinKey();
     }
 
-    vector<map<int64_t, string>> KVToCompact;                   //被合并的键值对
+    //找到Level1中和Level0中键有交集的文件
+    vector<int> SStableInLevel1;
+    for(int i=0; i<SSTable[1].size(); ++i)
+    {
+        if(SSTable[1][i].getMaxKey()>=tempMin && SSTable[1][i].getMinKey()<=tempMax)
+            SStableInLevel1.push_back(i);
+    }
+
+    vector<map<int64_t, string>> KVToCompact;                   //被合并的键值对，下标越大时间戳越大
     vector<map<int64_t, string>::iterator> KVToCompactIter;     //键值对迭代器
-    int num=3;                                      //合并的SSTable个数
+    int num = 3;                                                //合并的SSTable个数
     int size = InitialSize;
     map<int64_t, int> minKey;                      //minKey中只存放num个数据，分别为各个SSTable中最小键和对应的SSTable
     uint64_t tempKey;
@@ -172,14 +185,32 @@ void KVStore::compactionForLevel0()
     map<int64_t, string> newTable;                 //暂存合并后的键值对
     uint64_t numPair=0;
 
+    //考虑Level1层，将table按键值对排序
+    map<uint64_t, Table> sortTable;
+    for(int i:SStableInLevel1)
+    {
+        sortTable[SSTable[1][i].getTimestamp()] = SSTable[1][i];
+    }
+    for(auto iter:sortTable)
+    {
+        map<int64_t, string> KVPair;
+        iter.second.traverse(KVPair);
+        KVToCompact.push_back(KVPair);
+    }
+
+    //Level0层，后面生成的文件时间戳一定大于之前的文件
     for(int i=0; i<num; ++i)
     {
         map<int64_t, string> KVPair;
-        SSTable[0][i].traverse(KVPair);             //读取SSTable中的全部键值对
+        SSTable[0][i].traverse(KVPair);
         KVToCompact.push_back(KVPair);
+    }
+
+    for(int i=0; i<KVToCompact.size(); ++i)
+    {
         auto iter = KVToCompact[i].begin();
 
-        if(minKey.count(iter->first)==0 || i>minKey[iter->first])      //时间戳更大的才能覆盖原有的值
+        if(minKey.count(iter->first)==0 || i>minKey[iter->first])  //如果键相同，保留时间戳较大的
             minKey[iter->first] = i;
 
         KVToCompactIter.push_back(iter);
@@ -203,23 +234,34 @@ void KVStore::compactionForLevel0()
         newTable[tempKey] = tempValue;
         numPair++;
         minKey.erase(tempKey);
+        KVToCompactIter[index]++;
         if(KVToCompactIter[index]!=KVToCompact[index].end())
         {
-            KVToCompactIter[index]++;
             int64_t select = KVToCompactIter[index]->first;
             if(minKey.count(select)==0 || index>minKey[select])
                 minKey[select] = index;
         }
     }
 
+    //合并后将被合并的文件删除
+    for(auto ss:SSTable[0])
+    {
+        utils::rmfile(ss.getFileName().data());
+    }
+    SSTable[0].clear();
+    for(int i:SStableInLevel1)
+    {
+        utils::rmfile(SSTable[1][i].getFileName().data());
+        SSTable[1].erase(SSTable[1].begin()+i, SSTable[1].begin()+i+1);
+    }
 }
 
 void KVStore::writeToFile(uint64_t timeStamp, uint64_t numPair, map<int64_t, string> &newTable)
 {
+
     string path = dir + "/level-1";
-    vector<string> file;
-    int numSST = utils::scanDir(path, file);
-    string FileName = path + "/SSTable" + to_string(numSST+1) + ".sst";
+    Level[1]++;
+    string FileName = path + "/SSTable" + to_string(Level[1]) + ".sst";
     fstream outFile(FileName, std::ios::app | std::ios::binary);
 
     auto iter1 = newTable.begin();
@@ -274,5 +316,7 @@ void KVStore::writeToFile(uint64_t timeStamp, uint64_t numPair, map<int64_t, str
         iter1++;
     }
     outFile.close();
+    Table newSSTable(FileName);
+    SSTable[1].push_back(newSSTable);
     newTable.clear();
 }

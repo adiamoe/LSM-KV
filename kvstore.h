@@ -6,6 +6,7 @@
 #include <map>
 using namespace std;
 
+static _inline int UpperNum(int i) {return pow(2, i+1);}
 
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here

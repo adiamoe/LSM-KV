@@ -18,12 +18,14 @@ private:
     map<int64_t, uint32_t> offset;      //储存对应的偏移量
     ifstream *file;
 public:
+    Table() {sstable = "";}
     Table(string &fileName);
 
+    string getFileName() {return sstable;}
     uint64_t getTimestamp() {return TimeAndNum[0];}
     uint64_t getNumPair() {return TimeAndNum[1];}
-    uint64_t getMaxKey() {return MinMaxKey[1];}
-    uint64_t getMinKey() {return MinMaxKey[0];}
+    int64_t getMaxKey() {return MinMaxKey[1];}
+    int64_t getMinKey() {return MinMaxKey[0];}
 
     string getValue(uint64_t key) const;
     void open();
