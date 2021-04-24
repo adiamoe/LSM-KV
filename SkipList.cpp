@@ -142,15 +142,15 @@ void SkipList::clear()
 void SkipList::store(int num, const std::string &dir)
 {
     string FileName = dir + "/SSTable" + to_string(num) + ".sst";
-    fstream outFile(FileName, std::ios::app | std::ios::binary | ios::in);
+    fstream outFile(FileName, std::ios::app | std::ios::binary);
     Node *node = GetFirstNode()->right;
     timeStamp++;
 
     //写入时间戳、键值对个数和最小最大键
     outFile.write((char *)(&timeStamp), sizeof(uint64_t));
     outFile.write((char *)(&Size), sizeof(uint64_t));
-    outFile.write((char *)(&minKey), sizeof(uint64_t));
-    outFile.write((char *)(&maxKey), sizeof(uint64_t));
+    outFile.write((char *)(&minKey), sizeof(int64_t));
+    outFile.write((char *)(&maxKey), sizeof(int64_t));
 
     //写入生成对应的布隆过滤器
     bitset<81920> filter;

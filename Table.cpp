@@ -31,12 +31,12 @@ string Table::getValue(const uint64_t key) const{
 
     auto iter = offset.find(key);
     uint32_t pos1 = iter->second;
-    uint32_t pos2 = (++iter)->second;
+    file->seekg(ios::end);
+    uint32_t pos2 = ++iter!=offset.end()?iter->second:(int)file->tellg();
     uint64_t len = pos2 - pos1;
     file->seekg(pos1);
     char* ans = new char[len];
-    file->read((char *)(&ans), len-1);
-    cout<<key<<" "<<ans<<endl;
+    file->read(ans, sizeof(char) * len);
     return ans;
 }
 
@@ -47,7 +47,7 @@ void Table::traverse(map<int64_t, string> &pair) {
     auto iter2 = offset.begin();
     iter2++;
 
-    string ans;
+    char *ans;
     uint64_t len;
     while(iter1!=offset.end())
     {
@@ -59,10 +59,11 @@ void Table::traverse(map<int64_t, string> &pair) {
         else
         {
             file->seekg(0, ios::end);
-            len = file->tellg();
+            len = (int)file->tellg() - iter1->second;
         }
         file->seekg(iter1->second);
-        file->read((char *)(&ans), len);
+        ans = new char[len];
+        file->read(ans, sizeof(char) * len);
         pair[iter1->first] = ans;
         iter1++;
     }
@@ -73,10 +74,11 @@ void Table::traverse(map<int64_t, string> &pair) {
 void Table::open()
 {
     file->open(sstable, ios::in|ios::binary);
-    file->read((char *)(&metadata), 4* sizeof(uint64_t));
+    file->read((char *)(&TimeAndNum), 2* sizeof(uint64_t));
+    file->read((char*)(&MinMaxKey), 2* sizeof(int64_t));
     file->read((char *)(&BloomFilter), sizeof(BloomFilter));
 
-    int num = metadata[1];
+    int num = TimeAndNum[1];
     uint64_t tempKey;
     int32_t  tempOffset;
     while(num--)

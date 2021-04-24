@@ -3,6 +3,7 @@
 #include "kvstore_api.h"
 #include "Table.h"
 #include "SkipList.h"
+#include <map>
 using namespace std;
 
 
@@ -29,4 +30,6 @@ public:
 	void compactionForLevel0();
 
 	void compactionForLeveln(int level);
+
+	void writeToFile(uint64_t timeStamp, uint64_t numPair, map<int64_t, string> &newTable);
 };

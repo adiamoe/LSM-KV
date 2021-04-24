@@ -14,6 +14,7 @@
 #include <iostream>
 
 const int MEMTABLE = (int) pow(2, 21);
+const int InitialSize = 10272;
 using namespace std;
 
 struct Node{
@@ -27,7 +28,7 @@ struct Node{
 class SkipList {
 private:
     //储存的键值对个数
-    int Size;
+    uint64_t Size;
     //头结点
     Node *head;
     //时间戳，即SSTable序号
@@ -42,7 +43,7 @@ public:
     //转换成SSTable占用的空间大小
     size_t memory;
 
-    SkipList():Size(0), head(nullptr), memory(32+10240), timeStamp(0), minKey(INT64_MAX), maxKey(INT64_MIN){}
+    SkipList():Size(0), head(nullptr), memory(InitialSize), timeStamp(0), minKey(INT64_MAX), maxKey(INT64_MIN){}
 
     //get the value of key
     string get(int64_t key);
