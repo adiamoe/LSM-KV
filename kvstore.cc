@@ -76,7 +76,7 @@ void KVStore::put(uint64_t key, const string &s)
  * Returns the (string) value of the given key.
  * An empty string indicates not found.
  */
- //todo:考虑时间戳
+
 std::string KVStore::get(uint64_t key)
 {
 	string ans = memTable->get(key);
@@ -89,11 +89,12 @@ std::string KVStore::get(uint64_t key)
             return ans;
     }
 
-	for(const auto &tableList:SSTable)
+    string out;
+    for(const auto &tableList:SSTable)
     {
 	    for(auto table = tableList.rbegin(); table!=tableList.rend(); ++table)
         {
-	        string out = table->getValue(key);
+	        out = table->getValue(key);
 	        if(!out.empty())
             {
 	            if(out=="~DELETED~")
@@ -103,6 +104,7 @@ std::string KVStore::get(uint64_t key)
             }
         }
     }
+	cout<<key<<endl;
 	return "";
 }
 /**
@@ -191,7 +193,7 @@ void KVStore::compactionForLevel0()
     {
         sortTable[SSTable[1][i].getTimestamp()] = SSTable[1][i];
     }
-    for(auto iter:sortTable)
+    for(auto &iter:sortTable)
     {
         map<int64_t, string> KVPair;
         iter.second.traverse(KVPair);
@@ -211,7 +213,9 @@ void KVStore::compactionForLevel0()
         auto iter = KVToCompact[i].begin();
 
         if(minKey.count(iter->first)==0 || i>minKey[iter->first])  //如果键相同，保留时间戳较大的
+        {
             minKey[iter->first] = i;
+        }
 
         KVToCompactIter.push_back(iter);
     }
@@ -249,7 +253,7 @@ void KVStore::compactionForLevel0()
         utils::rmfile(ss.getFileName().data());
     }
     SSTable[0].clear();
-    for(int i:SStableInLevel1)
+    for(int i=SStableInLevel1.size()-1; i>=0; --i)
     {
         utils::rmfile(SSTable[1][i].getFileName().data());
         SSTable[1].erase(SSTable[1].begin()+i, SSTable[1].begin()+i+1);
@@ -258,7 +262,6 @@ void KVStore::compactionForLevel0()
 
 void KVStore::writeToFile(uint64_t timeStamp, uint64_t numPair, map<int64_t, string> &newTable)
 {
-
     string path = dir + "/level-1";
     Level[1]++;
     string FileName = path + "/SSTable" + to_string(Level[1]) + ".sst";
@@ -318,5 +321,6 @@ void KVStore::writeToFile(uint64_t timeStamp, uint64_t numPair, map<int64_t, str
     outFile.close();
     Table newSSTable(FileName);
     SSTable[1].push_back(newSSTable);
+
     newTable.clear();
 }

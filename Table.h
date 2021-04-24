@@ -29,7 +29,7 @@ public:
 
     string getValue(uint64_t key) const;
     void open();
-    void traverse(map<int64_t, string> &pair);
+    void traverse(map<int64_t, string> &pair) const;
     void reset();
 };
 

@@ -172,11 +172,13 @@ void SkipList::store(int num, const std::string &dir)
     uint32_t index = 0;
     node = GetFirstNode()->right;
     int length = 0;
+    int i=0;
     while(node)
     {
+        i++;
         tempKey = node->key;
         index = dataArea + length;
-        outFile.write((char *)(&tempKey), sizeof(uint64_t));
+        outFile.write((char *)(&tempKey), sizeof(int64_t));
         outFile.write((char *)(&index), sizeof(uint32_t));
         length += node->val.size()+1;
         node = node->right;

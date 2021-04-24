@@ -14,10 +14,9 @@ Table::Table(string &fileName) {
 /**
  * 根据输入的key，寻找文件中有无对应的value
  */
- //todo:这个函数是const的吗
 string Table::getValue(const uint64_t key) const{
 
-     file->open(sstable, ios::in|ios::binary);
+    file->open(sstable, ios::in|ios::binary);
     //通过布隆过滤器判断key是否存在，如果有其中一个bit为0，则证明不存在
     unsigned int hash[4] = {0};
     MurmurHash3_x64_128(&key, sizeof(key), 1, hash);
@@ -28,20 +27,25 @@ string Table::getValue(const uint64_t key) const{
     //再在键值对中进行查找
     if(offset.count(key)==0)
         return "";
+    auto iter1 = offset.find(key);
+    auto iter2 = offset.find(key);
+    iter2++;
+    file->seekg(0, ios::end);
+    uint64_t len = iter2!=offset.end()? iter2->second-iter1->second:(int)file->tellg() - iter1->second;
 
-    auto iter = offset.find(key);
-    uint32_t pos1 = iter->second;
-    file->seekg(ios::end);
-    uint32_t pos2 = ++iter!=offset.end()?iter->second:(int)file->tellg();
-    uint64_t len = pos2 - pos1;
-    file->seekg(pos1);
     char* ans = new char[len];
+
+    file->close();
+    file->open(sstable, ios::in|ios::binary);      //遇到了部分数据有概率读不到的情况，关闭文件再打开可以规避这个问题
+    file->seekg(iter1->second);                    //但是原因实在百思不得其解
     file->read(ans, sizeof(char) * len);
+
+    file->close();                  //一定要关闭文件，没有关闭文件会读出乱码，血泪教训
     return ans;
 }
 
 //遍历文件，将键值对全部读进内存
-void Table::traverse(map<int64_t, string> &pair) {
+void Table::traverse(map<int64_t, string> &pair) const{
     file->open(sstable, ios::in|ios::binary);
     auto iter1 = offset.begin();
     auto iter2 = offset.begin();
@@ -79,12 +83,12 @@ void Table::open()
     file->read((char *)(&BloomFilter), sizeof(BloomFilter));
 
     int num = TimeAndNum[1];
-    uint64_t tempKey;
-    int32_t  tempOffset;
+    int64_t tempKey;
+    uint32_t  tempOffset;
     while(num--)
     {
-        file->read((char*)(&tempKey), sizeof(uint64_t));
-        file->read((char*)(&tempOffset), sizeof(int32_t));
+        file->read((char*)(&tempKey), sizeof(int64_t));
+        file->read((char*)(&tempOffset), sizeof(uint32_t));
         offset[tempKey] = tempOffset;
     }
 
