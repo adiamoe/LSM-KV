@@ -21,16 +21,23 @@ public:
     Table() {sstable = "";}
     Table(string &fileName);
 
-    string getFileName() {return sstable;}
-    uint64_t getTimestamp() {return TimeAndNum[0];}
-    uint64_t getNumPair() {return TimeAndNum[1];}
-    int64_t getMaxKey() {return MinMaxKey[1];}
-    int64_t getMinKey() {return MinMaxKey[0];}
+    bool operator<(const Table& temp) const
+    {
+        if(getTimestamp()==temp.getTimestamp())
+            return getMinKey()>temp.getMaxKey();
+        return getTimestamp()<temp.getTimestamp();
+    }
+
+    string getFileName() const {return sstable;}
+    uint64_t getTimestamp() const {return TimeAndNum[0];}
+    uint64_t getNumPair() const {return TimeAndNum[1];}
+    int64_t getMaxKey() const {return MinMaxKey[1];}
+    int64_t getMinKey() const {return MinMaxKey[0];}
 
     string getValue(uint64_t key) const;
     void open();
     void traverse(map<int64_t, string> &pair) const;
-    void reset();
+    void reset() const;
 };
 
 

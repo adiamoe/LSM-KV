@@ -35,8 +35,8 @@ string Table::getValue(const uint64_t key) const{
 
     char* ans = new char[len];
 
-    file->close();
-    file->open(sstable, ios::in|ios::binary);      //遇到了部分数据有概率读不到的情况，关闭文件再打开可以规避这个问题
+
+    reset();                                        //遇到了部分数据有概率读不到的情况，关闭文件再打开可以规避这个问题
     file->seekg(iter1->second);                    //但是原因实在百思不得其解
     file->read(ans, sizeof(char) * len);
 
@@ -103,6 +103,7 @@ void Table::open()
     file->close();
 }
 
-void Table::reset() {
+void Table::reset() const{
+    file->close();
     file->open(sstable, ios::in|ios::binary);
 }
