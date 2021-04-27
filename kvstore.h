@@ -4,11 +4,13 @@
 #include "Table.h"
 #include "SkipList.h"
 #include <map>
+#include <set>
 #include <queue>
 
 using namespace std;
 
 static inline int UpperNum(int i) {return pow(2, i+1);}
+const string DEL = "~DELETED~";
 
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
@@ -16,7 +18,7 @@ private:
     SkipList *memTable;
     string dir;
     vector<int> Level; //记录对应层的文件数目
-    vector<map<string, Table>> SSTable;
+    vector<set<Table>> SSTable;
 public:
 	KVStore(const std::string &dir);
 

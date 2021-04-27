@@ -23,7 +23,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
         {
             string FileName = path + "/" + file[j];
             Table sstable(FileName);
-            SSTable[i][FileName] = sstable;
+            SSTable[i].insert(sstable);
         }
     }
     if(SSTable.empty())
@@ -65,7 +65,7 @@ void KVStore::put(uint64_t key, const string &s)
         memTable->store(Level[0], path);
         string newFile = path + "/SSTable" + to_string(Level[0]) + ".sst";
         Table newTable(newFile);
-        SSTable[0][newFile] = newTable;
+        SSTable[0].insert(newTable);
         if(Level[0]>UpperNum(0))
         {
             compactionForLevel(1);
@@ -81,33 +81,33 @@ void KVStore::put(uint64_t key, const string &s)
 
 std::string KVStore::get(uint64_t key)
 {
-	string ans = memTable->get(key);
+    string ans = memTable->get(key);
 
-	if(!ans.empty())
+    if(!ans.empty())
     {
-	    if(ans=="~DELETED~")
-	        return "";
-	    else
+        if(ans==DEL)
+            return "";
+        else
             return ans;
     }
 
     string out;
     for(const auto &tableList:SSTable)
     {
-	    for(auto table = tableList.rbegin(); table!=tableList.rend(); ++table)
+        for(auto table = tableList.rbegin(); table!=tableList.rend(); ++table)
         {
-	        out = table->second.getValue(key);
-	        if(!out.empty())
+            out = table->getValue(key);
+            if(!out.empty())
             {
-	            if(out=="~DELETED~")
-	                return "";
-	            else
+                if(out==DEL)
+                    return "";
+                else
                     return out;
             }
         }
     }
-	cout<<key<<endl;
-	return "";
+    cout<<key<<endl;
+    return "";
 }
 /**
  * Delete the given key-value pair if it exists.
@@ -116,9 +116,8 @@ std::string KVStore::get(uint64_t key)
 bool KVStore::del(uint64_t key)
 {
     bool flag = !get(key).empty();
-    string del = "~DELETED~";
     if(flag)
-        put(key, del);
+        put(key, DEL);
     return flag;
 }
 
@@ -168,17 +167,17 @@ void KVStore::compactionForLevel(int level)
     if(level == SSTable.size())
         lastLevel = true;
 
-    vector<string> FileToRemoveLevelminus1;                    //记录需要被删除的文件
-    vector<string> FileToRemoveLevel;
+    vector<Table> FileToRemoveLevelminus1;                    //记录需要被删除的文件
+    vector<Table> FileToRemoveLevel;
 
     //Level层，将SSTable按时间戳排序
-    priority_queue<Table> sortTableLastLevel;
+    priority_queue<Table, vector<Table>, greater<>> sortTableLastLevel;
     //需要被合并的SSTable
-    priority_queue<Table> sortTable;
+    priority_queue<Table, vector<Table>, greater<>> sortTable;
 
     for(auto &table:SSTable[level-1])
     {
-        sortTableLastLevel.push(table.second);
+        sortTableLastLevel.push(table);
     }
 
     uint64_t timestamp = 0;
@@ -192,7 +191,7 @@ void KVStore::compactionForLevel(int level)
     {
         Table table = sortTableLastLevel.top();
         sortTable.push(table);
-        FileToRemoveLevelminus1.push_back(table.getFileName());
+        FileToRemoveLevelminus1.push_back(table);
         sortTableLastLevel.pop();
 
         timestamp = table.getTimestamp();
@@ -205,10 +204,10 @@ void KVStore::compactionForLevel(int level)
     //找到Level中和Level-1中键有交集的文件
     for(auto &iter:SSTable[level])
     {
-        if(iter.second.getMaxKey()>=tempMin && iter.second.getMinKey()<=tempMax)
+        if(iter.getMaxKey()>=tempMin && iter.getMinKey()<=tempMax)
         {
-            sortTable.push(iter.second);
-            FileToRemoveLevel.push_back(iter.second.getFileName());
+            sortTable.push(iter);
+            FileToRemoveLevel.push_back(iter);
         }
     }
 
@@ -249,7 +248,7 @@ void KVStore::compactionForLevel(int level)
         tempKey = iter->first;
         index = iter->second;
         tempValue = KVToCompactIter[index]->second;
-        if(lastLevel && tempValue=="~DELETED~")    //最后一层的删除标记不写入文件
+        if(lastLevel && tempValue == DEL)    //最后一层的删除标记不写入文件
             goto next;
         size += tempValue.size() + 1 + 12;
         if(size > MEMTABLE)
@@ -258,7 +257,7 @@ void KVStore::compactionForLevel(int level)
             size = InitialSize + tempValue.size() + 1 + 12;
         }
         newTable[tempKey] = tempValue;
-next:   minKey.erase(tempKey);
+        next:   minKey.erase(tempKey);
         KVToCompactIter[index]++;
         if(KVToCompactIter[index]!=KVToCompact[index].end())
         {
@@ -275,13 +274,13 @@ next:   minKey.erase(tempKey);
     //删除level和level-1中的被合并文件
     for(auto &file:FileToRemoveLevelminus1)
     {
-        utils::rmfile(file.data());
+        utils::rmfile(file.getFileName().data());
         SSTable[level-1].erase(file);
     }
 
     for(auto &file:FileToRemoveLevel)
     {
-        utils::rmfile(file.data());
+        utils::rmfile(file.getFileName().data());
         SSTable[level].erase(file);
     }
 
@@ -476,7 +475,7 @@ void KVStore::writeToFile(int level, uint64_t timeStamp, uint64_t numPair, map<i
     outFile.close();
 
     Table newSSTable(FileName);
-    SSTable[level][FileName] = newSSTable;
+    SSTable[level].insert(newSSTable) ;
 
     newTable.clear();
 }

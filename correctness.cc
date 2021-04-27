@@ -7,35 +7,51 @@
 class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
-	const uint64_t LARGE_TEST_MAX = 1024 * 16;
+	const uint64_t LARGE_TEST_MAX = 1024 * 8;
 
 	void regular_test(uint64_t max)
 	{
 		uint64_t i;
 
 		// Test a single key
-		EXPECT(not_found, store.get(1));
+		/*EXPECT(not_found, store.get(1));
 		store.put(1, "SE");
 		EXPECT("SE", store.get(1));
 		EXPECT(true, store.del(1));
 		EXPECT(not_found, store.get(1));
 		EXPECT(false, store.del(1));
 
-		phase();
+		phase();*/
 
-		// Test multiple key-value pairs
-		for (i = 0; i < max; ++i) {
-			store.put(i, std::string(i+1, 's'));
-			EXPECT(std::string(i+1, 's'), store.get(i));
-		}
-		phase();
+        // Test multiple key-value pairs
+        for (i = 0; i < max; ++i) {
+            store.put(i, std::string(i+1, 's'));
+            EXPECT(std::string(i+1, 's'), store.get(i));
+        }
+        phase();
 
-		// Test after all insertions
-		for (i = 0; i < max; ++i)
-			EXPECT(std::string(i+1, 's'), store.get(i));
-		phase();
+        // Test after all insertions
+        /*for (i = 0; i < max; ++i)
+            EXPECT(std::string(i+1, 's'), store.get(i));
+        phase();*/
 
-		// Test deletions
+        for (i = 1; i < max; i+=4) {
+            store.put(i, std::string(i+1, 't'));
+            EXPECT(std::string(i+1, 't'), store.get(i));
+            //EXPECT(std::string(i+1, 's'), store.get(i-1));
+        }
+        phase();
+
+        cout<<"\n\n\n\n\n\n\n";
+        for (i = 0; i < max; i+=2)
+            EXPECT(std::string(i+1, 's'), store.get(i));
+        phase();
+
+        /*for (i = 0; i < max; i+=7)
+            EXPECT(std::string(i+2, 's'), store.get(i));
+        phase();*/
+
+		/*// Test deletions
 		for (i = 0; i < max; i+=2)
 			EXPECT(true, store.del(i));
 
@@ -44,9 +60,9 @@ private:
 			       store.get(i));
         phase();
 		for (i = 1; i < max; ++i)
-			EXPECT(i & 1, store.del(i));
+			EXPECT(i & 1, store.del(i));*/
 
-		phase();
+		//phase();
 
 		report();
 	}
@@ -60,8 +76,8 @@ public:
 	{
 		std::cout << "KVStore Correctness Test" << std::endl;
 
-		std::cout << "[Simple Test]" << std::endl;
-		regular_test(SIMPLE_TEST_MAX);
+		//std::cout << "[Simple Test]" << std::endl;
+		//regular_test(SIMPLE_TEST_MAX);
 
 		std::cout << "[Large Test]" << std::endl;
 		regular_test(LARGE_TEST_MAX);
