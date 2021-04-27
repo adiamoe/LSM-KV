@@ -21,10 +21,18 @@ public:
     Table() {sstable = "";}
     Table(string &fileName);
 
+    //时间戳小的排前面
     bool operator<(const Table& temp) const
     {
         if(getTimestamp()==temp.getTimestamp())
-            return getMinKey()>temp.getMaxKey();
+            return getMinKey()>temp.getMinKey();
+        return getTimestamp()>temp.getTimestamp();
+    }
+
+    bool operator>(const Table& temp) const
+    {
+        if(getTimestamp()==temp.getTimestamp())
+            return getMinKey()<temp.getMinKey();
         return getTimestamp()<temp.getTimestamp();
     }
 

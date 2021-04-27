@@ -30,8 +30,6 @@ public:
 
 	void reset() override;
 
-	void compactionForLevel0();
-
 	void compactionForLevel(int level);
 
 	void writeToFile(int level, uint64_t timeStamp, uint64_t numPair, map<int64_t, string> &newTable);

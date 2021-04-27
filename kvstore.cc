@@ -49,7 +49,9 @@ void KVStore::put(uint64_t key, const string &s)
 {
     string val = memTable->get(key);
     if(!val.empty())
+    {
         memTable->memory += s.size() - val.size();
+    }
     else
         memTable->memory += 4 + 8 + s.size() + 1;  //索引值 + key + value所占的内存大小 + "\0"
 
@@ -104,7 +106,7 @@ std::string KVStore::get(uint64_t key)
             }
         }
     }
-	//cout<<key<<endl;
+	cout<<key<<endl;
 	return "";
 }
 /**
@@ -114,8 +116,9 @@ std::string KVStore::get(uint64_t key)
 bool KVStore::del(uint64_t key)
 {
     bool flag = !get(key).empty();
+    string del = "~DELETED~";
     if(flag)
-        put(key, "~DELETED~");
+        put(key, del);
     return flag;
 }
 
@@ -160,6 +163,10 @@ void KVStore::compactionForLevel(int level)
         Level.push_back(0);
         SSTable.emplace_back();
     }
+
+    bool lastLevel = false;
+    if(level == SSTable.size())
+        lastLevel = true;
 
     vector<string> FileToRemoveLevelminus1;                    //记录需要被删除的文件
     vector<string> FileToRemoveLevel;
@@ -242,6 +249,8 @@ void KVStore::compactionForLevel(int level)
         tempKey = iter->first;
         index = iter->second;
         tempValue = KVToCompactIter[index]->second;
+        if(lastLevel && tempValue=="~DELETED~")    //最后一层的删除标记不写入文件
+            goto next;
         size += tempValue.size() + 1 + 12;
         if(size > MEMTABLE)
         {
@@ -249,7 +258,7 @@ void KVStore::compactionForLevel(int level)
             size = InitialSize + tempValue.size() + 1 + 12;
         }
         newTable[tempKey] = tempValue;
-        minKey.erase(tempKey);
+next:   minKey.erase(tempKey);
         KVToCompactIter[index]++;
         if(KVToCompactIter[index]!=KVToCompact[index].end())
         {
