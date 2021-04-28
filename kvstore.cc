@@ -2,6 +2,15 @@
 #include "utils.h"
 
 //todo:注意reset()
+
+int getFileNum(const string &fileName)
+{
+    auto iter = fileName.find('e');
+    iter++;
+    string file = fileName.substr(iter);
+    return stoi(file);
+}
+
 KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
 {
     memTable = new SkipList;
@@ -18,7 +27,10 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
         string path = dir + "/" + ret[i];
         vector<string> file;
         int numSST = utils::scanDir(path, file);
-        Level.push_back(1500);
+        if(numSST>0)
+            Level.push_back(getFileNum(file[file.size()-1]));
+        else
+            Level.push_back(0);
         for(int j=0; j<numSST; ++j)
         {
             string FileName = path + "/" + file[j];
@@ -107,7 +119,7 @@ std::string KVStore::get(uint64_t key)
             }
         }
     }
-    cout<<key<<endl;
+
     return ans;
 }
 /**
@@ -222,7 +234,6 @@ void KVStore::compactionForLevel(int level)
     //找到Level中和Level-1中键有交集的文件
     for(auto &iter:SSTable[level])
     {
-        cout<<iter.getTimestamp()<<" "<<iter.getMinKey()<<" "<<iter.getMaxKey()<<endl;
         if(iter.getMaxKey()>=tempMin && iter.getMinKey()<=tempMax)
         {
             sortTable.push(iter);
