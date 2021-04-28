@@ -8,7 +8,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
     this->dir = dir;
     Level.push_back(0);
 
-    reset();
+    //reset();
 
     vector<string> ret;
     int num = utils::scanDir(dir, ret);
@@ -18,7 +18,7 @@ KVStore::KVStore(const std::string &dir): KVStoreAPI(dir)
         string path = dir + "/" + ret[i];
         vector<string> file;
         int numSST = utils::scanDir(path, file);
-        Level.push_back(numSST);
+        Level.push_back(1500);
         for(int j=0; j<numSST; ++j)
         {
             string FileName = path + "/" + file[j];
@@ -49,9 +49,7 @@ void KVStore::put(uint64_t key, const string &s)
 {
     string val = memTable->get(key);
     if(!val.empty())
-    {
         memTable->memory += s.size() - val.size();
-    }
     else
         memTable->memory += 4 + 8 + s.size() + 1;  //索引值 + key + value所占的内存大小 + "\0"
 
@@ -66,6 +64,10 @@ void KVStore::put(uint64_t key, const string &s)
         string newFile = path + "/SSTable" + to_string(Level[0]) + ".sst";
         Table newTable(newFile);
         SSTable[0].insert(newTable);
+        if(!val.empty())
+            memTable->memory += s.size() - val.size();
+        else
+            memTable->memory += 4 + 8 + s.size() + 1;
         if(Level[0]>UpperNum(0))
         {
             compactionForLevel(1);
@@ -91,23 +93,22 @@ std::string KVStore::get(uint64_t key)
             return ans;
     }
 
-    string out;
     for(const auto &tableList:SSTable)
     {
         for(auto table = tableList.rbegin(); table!=tableList.rend(); ++table)
         {
-            out = table->getValue(key);
-            if(!out.empty())
+            ans = table->getValue(key);
+            if(!ans.empty())
             {
-                if(out==DEL)
+                if(ans==DEL)
                     return "";
                 else
-                    return out;
+                    return ans;
             }
         }
     }
     cout<<key<<endl;
-    return "";
+    return ans;
 }
 /**
  * Delete the given key-value pair if it exists.
@@ -141,6 +142,28 @@ void KVStore::reset()
     }
 }
 
+void update(vector<map<int64_t, string>> &KVToCompact, vector<map<int64_t, string>::iterator> &KVToCompactIter,
+        map<int64_t,int> &minKey, int index)
+{
+    while(KVToCompactIter[index]!=KVToCompact[index].end())
+    {
+        int64_t select = KVToCompactIter[index]->first;
+        if(minKey.count(select)==0)
+        {
+            minKey[select] = index;
+            break;
+        }
+        else if(index>minKey[select])
+        {
+            int pos = minKey[select];
+            minKey[select] = index;
+            update(KVToCompact, KVToCompactIter, minKey, pos);
+            break;
+        }
+        KVToCompactIter[index]++;
+    }
+}
+
 /**
  * 递归合并各层SSTABLE，对0层将所有文件向下合并
  * 其它层则只将超出最大个数的文件向下合并
@@ -170,15 +193,9 @@ void KVStore::compactionForLevel(int level)
     vector<Table> FileToRemoveLevelminus1;                    //记录需要被删除的文件
     vector<Table> FileToRemoveLevel;
 
-    //Level层，将SSTable按时间戳排序
-    priority_queue<Table, vector<Table>, greater<>> sortTableLastLevel;
+
     //需要被合并的SSTable
     priority_queue<Table, vector<Table>, greater<>> sortTable;
-
-    for(auto &table:SSTable[level-1])
-    {
-        sortTableLastLevel.push(table);
-    }
 
     uint64_t timestamp = 0;
     int64_t tempMin = INT64_MAX, tempMax = INT64_MIN;
@@ -187,12 +204,13 @@ void KVStore::compactionForLevel(int level)
     int compactNum = (level-1==0)?UpperNum(0)+1:SSTnum - UpperNum(level-1);
 
     //遍历Level-1中被合并的SSTable，获得时间戳和最大最小键
-    for(int i=0; i<compactNum; ++i)
+    auto it = SSTable[level-1].begin();
+    for(int i=0 ; i<compactNum; ++i)
     {
-        Table table = sortTableLastLevel.top();
+        Table table = *it;
         sortTable.push(table);
         FileToRemoveLevelminus1.push_back(table);
-        sortTableLastLevel.pop();
+        it++;
 
         timestamp = table.getTimestamp();
         if(table.getMaxKey()>tempMax)
@@ -204,6 +222,7 @@ void KVStore::compactionForLevel(int level)
     //找到Level中和Level-1中键有交集的文件
     for(auto &iter:SSTable[level])
     {
+        cout<<iter.getTimestamp()<<" "<<iter.getMinKey()<<" "<<iter.getMaxKey()<<endl;
         if(iter.getMaxKey()>=tempMin && iter.getMinKey()<=tempMax)
         {
             sortTable.push(iter);
@@ -228,18 +247,25 @@ void KVStore::compactionForLevel(int level)
         KVToCompact.push_back(KVPair);
     }
 
+    KVToCompactIter.resize(KVToCompact.size());
     //获取键值对迭代器
-    for(int i=0; i<KVToCompact.size(); ++i)
+    for(int i=KVToCompact.size()-1; i>=0; --i)
     {
         auto iter = KVToCompact[i].begin();
-
-        if(minKey.count(iter->first)==0 || i>minKey[iter->first])  //如果键相同，保留时间戳较大的
+        while(iter!=KVToCompact[i].end())
         {
-            minKey[iter->first] = i;
+            if(minKey.count(iter->first)==0)  //如果键相同，保留时间戳较大的
+            {
+                minKey[iter->first] = i;
+                break;
+            }
+            iter++;
         }
-        KVToCompactIter.push_back(iter);
+        if(iter!=KVToCompact[i].end())
+            KVToCompactIter[i] = iter;
     }
 
+    int nums=0;
     //只要minKey不为空，minKey的第一个元素一定为所有SSTable中的最小键
     //每个循环将minKey中的最小键和对应的值加入newTable
     while(!minKey.empty())
@@ -257,14 +283,11 @@ void KVStore::compactionForLevel(int level)
             size = InitialSize + tempValue.size() + 1 + 12;
         }
         newTable[tempKey] = tempValue;
-        next:   minKey.erase(tempKey);
+next:   minKey.erase(tempKey);
         KVToCompactIter[index]++;
-        if(KVToCompactIter[index]!=KVToCompact[index].end())
-        {
-            int64_t select = KVToCompactIter[index]->first;
-            if(minKey.count(select)==0 || index>minKey[select])
-                minKey[select] = index;
-        }
+        update(KVToCompact, KVToCompactIter, minKey, index);
+        if(KVToCompactIter[index]==KVToCompact[index].end())
+            nums++;
     }
 
     //不足2MB的文件也要写入
@@ -285,6 +308,7 @@ void KVStore::compactionForLevel(int level)
     }
 
     compactionForLevel(level+1);
+    //exit(0);
 }
 
 /**

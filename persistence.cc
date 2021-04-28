@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 	      testmode ? "Test Mode" : "Preparation Mode");
 
 	PersistenceTest test("./data", verbose);
-
+    testmode = true;
 	test.start_test(static_cast<void *>(&testmode));
 
 	return 0;

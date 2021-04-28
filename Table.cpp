@@ -17,6 +17,7 @@ Table::Table(string &fileName) {
 string Table::getValue(const uint64_t key) const{
 
     file->open(sstable, ios::in|ios::binary);
+    reset();
     //通过布隆过滤器判断key是否存在，如果有其中一个bit为0，则证明不存在
     unsigned int hash[4] = {0};
     MurmurHash3_x64_128(&key, sizeof(key), 1, hash);
@@ -47,6 +48,7 @@ string Table::getValue(const uint64_t key) const{
 //遍历文件，将键值对全部读进内存
 void Table::traverse(map<int64_t, string> &pair) const{
     file->open(sstable, ios::in|ios::binary);
+    reset();
     auto iter1 = offset.begin();
     auto iter2 = offset.begin();
     iter2++;
@@ -78,6 +80,7 @@ void Table::traverse(map<int64_t, string> &pair) const{
 void Table::open()
 {
     file->open(sstable, ios::in|ios::binary);
+    reset();
     file->read((char *)(&TimeAndNum), 2* sizeof(uint64_t));
     file->read((char*)(&MinMaxKey), 2* sizeof(int64_t));
     file->read((char *)(&BloomFilter), sizeof(BloomFilter));
