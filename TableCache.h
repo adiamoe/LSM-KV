@@ -9,7 +9,7 @@
 #define LSM_KV_TABLE_H
 
 
-class Table {
+class TableCache {
 private:
     string sstable;                     //文件路径及文件名
     uint64_t TimeAndNum[2];             //时间戳和键值对数量
@@ -18,18 +18,18 @@ private:
     map<int64_t, uint32_t> offset;      //储存对应的偏移量
     ifstream *file;
 public:
-    Table() {sstable = "";}
-    Table(string &fileName);
+    TableCache() {sstable = "";}
+    TableCache(string &fileName);
 
     //时间戳小的排前面
-    bool operator<(const Table& temp) const
+    bool operator<(const TableCache& temp) const
     {
         if(getTimestamp()==temp.getTimestamp())
             return getMinKey()<temp.getMinKey();
         return getTimestamp()<temp.getTimestamp();
     }
 
-    bool operator>(const Table& temp) const
+    bool operator>(const TableCache& temp) const
     {
         if(getTimestamp()==temp.getTimestamp())
             return getMinKey()>temp.getMinKey();

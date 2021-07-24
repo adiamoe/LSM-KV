@@ -71,39 +71,6 @@ void SkipList::put(int64_t key, const string &value)
     }
 }
 
-/*
- * 删除时无论有没有这个元素，都需要插入“~DELETE~”，因此put可以取代删除的功能
- */
-/*
-bool SkipList::remove(int64_t key)
-{
-    Node *p = head, *q, *pos;
-    while(p)
-    {
-        while(p->right && p->right->key<key)
-        {
-            p = p->right;
-        }
-        if(p->right && p->right->key == key)
-        {
-            while(p)
-            {
-                q = p->right;
-                p->right = q->right;
-                p = p->down;
-                pos = q->down;
-                delete q;
-                while(p && p->right && p->right != pos)
-                    p = p->right;
-            }
-            Size--;
-            return true;
-        }
-        p = p->down;
-    }
-    return false;
-}*/
-
 Node* SkipList::GetFirstNode()
 {
     Node *p = head, *q = nullptr;
@@ -114,7 +81,7 @@ Node* SkipList::GetFirstNode()
     return q;
 }
 
-void SkipList::clear()
+SkipList::~SkipList()
 {
     if(!head)
         return;
@@ -195,5 +162,8 @@ void SkipList::store(int num, const std::string &dir)
         node = node->right;
     }
     outFile.close();
-    clear();
+}
+
+size_t SkipList::getSize() {
+    return Size;
 }

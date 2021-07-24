@@ -36,21 +36,15 @@ private:
         phase();*/
 
         for (i = 1; i < max; i+=4) {
-            store.put(i, std::string(i+1, 't'));
-            EXPECT(std::string(i+1, 't'), store.get(i));
             EXPECT(std::string(i, 's'), store.get(i-1));
         }
-        phase();
-
-        for (i = 0; i < max; i+=2)
-            EXPECT(std::string(i+1, 's'), store.get(i));
         phase();
 
         /*for (i = 0; i < max; i+=7)
             EXPECT(std::string(i+2, 's'), store.get(i));
         phase();*/
 
-		/*// Test deletions
+		//Test deletions
 		for (i = 0; i < max; i+=2)
 			EXPECT(true, store.del(i));
 
@@ -59,9 +53,9 @@ private:
 			       store.get(i));
         phase();
 		for (i = 1; i < max; ++i)
-			EXPECT(i & 1, store.del(i));*/
+			EXPECT(i & 1, store.del(i));
 
-		//phase();
+		phase();
 
 		report();
 	}
@@ -85,13 +79,13 @@ public:
 
 int main(int argc, char *argv[])
 {
-	bool verbose = (argc == 2 && std::string(argv[1]) == "-v");
+	bool verbose = true;
 
-	std::cout << "Usage: " << argv[0] << " [-v]" << std::endl;
-	std::cout << "  -v: print extra info for failed tests [currently ";
-	std::cout << (verbose ? "ON" : "OFF")<< "]" << std::endl;
-	std::cout << std::endl;
-	std::cout.flush();
+//	//std::cout << "Usage: " << argv[0] << " [-v]" << std::endl;
+//	std::cout << "  -v: print extra info for failed tests [currently ";
+//	std::cout << (verbose ? "ON" : "OFF")<< "]" << std::endl;
+//	std::cout << std::endl;
+//	std::cout.flush();
 
 	CorrectnessTest test("./data", verbose);
 

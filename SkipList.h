@@ -45,17 +45,15 @@ public:
 
     SkipList():Size(0), head(nullptr), memory(InitialSize), timeStamp(0), minKey(INT64_MAX), maxKey(INT64_MIN){}
 
+    ~SkipList();
+
     //get the value of key
     string get(int64_t key);
 
     //insert the KV into Skiplist
     void put(int64_t key, const string &value);
 
-    //remove the KV pair
-    //bool remove(int64_t key);
-
-    //清空所有元素
-    void clear();
+    size_t getSize();
 
     void store(int num, const std::string &dir);   //将memtable储存为SSTable
 
