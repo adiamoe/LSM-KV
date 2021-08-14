@@ -10,6 +10,7 @@
 1. 双线程，immutable table序列化和SStable的compaction，由独立线程执行，不影响主线程在memTable和immutable Table中的操作
 2. Compaction时，选择较低层键值重叠的SSTable，执行多路归并，同时对于相同键值的数据，保留时间戳较大的一项
 3. 通过Bloom Filter和二分查找提高搜索效率，同时将Bloom Filter和索引部分储存在内存TableCache中，减少磁盘IO
+4. 通过线程池，实现异步调用，支持多线程读和单线程写，读取结果返回future
 
 ### 执行接口
 1. get get首先会在memTable中查找，如果immutable Table存在，再进入immutable Table。如果都没找到，再在TableCache中分层进行搜索，直到获取对应值。
