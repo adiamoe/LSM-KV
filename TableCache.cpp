@@ -5,7 +5,6 @@
 #include "TableCache.h"
 
 TableCache::TableCache(string &fileName) {
-    file = new ifstream;
     sstable = fileName;
     open();
 }
@@ -14,7 +13,6 @@ TableCache::TableCache(string &fileName) {
  * 根据输入的key，寻找文件中有无对应的value
  */
 string TableCache::getValue(const uint64_t key) const{
-
     if(key<MinMaxKey[0] || key>MinMaxKey[1])
         return "";
     //通过布隆过滤器判断key是否存在，如果有其中一个bit为0，则证明不存在
@@ -31,6 +29,7 @@ string TableCache::getValue(const uint64_t key) const{
     auto iter2 = offset.find(key);
     iter2++;
 
+    auto *file = new fstream ;
     file->open(sstable, ios::in|ios::binary);
     file->seekg(0, ios::end);
     uint64_t len = iter2!=offset.end()? iter2->second-iter1->second:(int)file->tellg() - iter1->second;
@@ -38,18 +37,17 @@ string TableCache::getValue(const uint64_t key) const{
     char* ans = new char[len];
 
 
-    reset();                                        //遇到了部分数据有概率读不到的情况，关闭文件再打开可以规避这个问题
-    file->seekg(iter1->second);                    //但是原因实在百思不得其解
+    file->seekg(iter1->second);
     file->read(ans, sizeof(char) * len);
 
-    file->close();                  //一定要关闭文件，没有关闭文件会读出乱码，血泪教训
+    file->close();
     return ans;
 }
 
 //遍历文件，将键值对全部读进内存
 void TableCache::traverse(map<int64_t, string> &pair) const{
+    auto *file = new fstream ;
     file->open(sstable, ios::in|ios::binary);
-    reset();
     auto iter1 = offset.begin();
     auto iter2 = offset.begin();
     iter2++;
@@ -80,8 +78,8 @@ void TableCache::traverse(map<int64_t, string> &pair) const{
 //打开文件，将缓存在内存中的各项数据更新
 void TableCache::open()
 {
+    auto *file = new fstream ;
     file->open(sstable, ios::in|ios::binary);
-    reset();
     file->read((char *)(&TimeAndNum), 2* sizeof(uint64_t));
     file->read((char*)(&MinMaxKey), 2* sizeof(int64_t));
     file->read((char *)(&BloomFilter), sizeof(BloomFilter));
@@ -97,9 +95,4 @@ void TableCache::open()
     }
 
     file->close();
-}
-
-void TableCache::reset() const{
-    file->close();
-    file->open(sstable, ios::in|ios::binary);
 }

@@ -3,9 +3,12 @@
 #include "kvstore_api.h"
 #include "TableCache.h"
 #include "SkipList.h"
+#include "threadPool.h"
 #include <map>
 #include <set>
 #include <queue>
+#include <mutex>
+#include <shared_mutex>
 
 using namespace std;
 
@@ -18,7 +21,7 @@ private:
     enum mode{
         normal,
         compact,
-        exit
+        exits
     };
 
     shared_ptr<SkipList> memTable;
@@ -29,6 +32,8 @@ private:
     mode kvStoreMode;
     condition_variable cv;
     mutex m;
+    shared_mutex read_write;
+    ThreadPool pool{4};
 
 public:
 	KVStore(const std::string &dir);
@@ -40,6 +45,12 @@ public:
 	std::string get(uint64_t key) override;
 
 	bool del(uint64_t key) override;
+
+	future<string> getTask(uint64_t key);
+
+    void delTask(uint64_t key);
+
+    void putTask(uint64_t key, const std::string &s);
 
 	void reset() override;
 

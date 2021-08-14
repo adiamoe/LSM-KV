@@ -16,7 +16,6 @@ private:
     int64_t MinMaxKey[2];               //最小最大键
     bitset<81920> BloomFilter;          //过滤器
     map<int64_t, uint32_t> offset;      //储存对应的偏移量
-    ifstream *file;
 public:
     TableCache() {sstable = "";}
     TableCache(string &fileName);
@@ -45,7 +44,6 @@ public:
     string getValue(uint64_t key) const;
     void open();
     void traverse(map<int64_t, string> &pair) const;
-    void reset() const;
 };
 
 

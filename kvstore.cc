@@ -1,7 +1,6 @@
 #include "kvstore.h"
 #include "utils.h"
 #include <thread>
-#include <mutex>
 
 //todo:注意reset()
 
@@ -50,7 +49,7 @@ KVStore::~KVStore()
 {
     unique_lock<mutex> lk(m);
     cv.wait(lk, [&]{return kvStoreMode == normal;});
-    kvStoreMode = exit;
+    kvStoreMode = exits;
     string path = dir + "/level0";
     memTable->store(++Level[0], path);
     if(Level[0]==3)
@@ -61,8 +60,14 @@ KVStore::~KVStore()
  * Insert/Update the key-value pair.
  * No return values for simplicity.
  */
+
+void KVStore::putTask(uint64_t key, const std::string &s) {
+    pool.enqueue(&KVStore::put, this, key, s);
+}
+
 void KVStore::put(uint64_t key, const string &s)
 {
+    unique_lock<shared_mutex> lock(read_write);
     string val = memTable->get(key);
     if(!val.empty())
         memTable->memory += s.size() - val.size();
@@ -91,8 +96,13 @@ void KVStore::put(uint64_t key, const string &s)
  * An empty string indicates not found.
  */
 
+future<string> KVStore::getTask(uint64_t key) {
+    return pool.enqueue(&KVStore::get, this, key);
+}
+
 std::string KVStore::get(uint64_t key)
 {
+    shared_lock<shared_mutex> lock(read_write);
     string ans = memTable->get(key);
 
     if(!ans.empty()) {
@@ -137,16 +147,19 @@ std::string KVStore::get(uint64_t key)
 
     return ans;
 }
+
 /**
  * Delete the given key-value pair if it exists.
  * Returns false iff the key is not found.
  */
+
+void KVStore::delTask(uint64_t key) {
+    pool.enqueue(&KVStore::del, this, key);
+}
+
 bool KVStore::del(uint64_t key)
 {
-    bool flag = !get(key).empty();
-    if(flag)
-        put(key, DEL);
-    return flag;
+    put(key, DEL);
 }
 
 /**
