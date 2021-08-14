@@ -7,7 +7,7 @@
 class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
-	const uint64_t LARGE_TEST_MAX = 1024 * 16;
+	const uint64_t LARGE_TEST_MAX = 1024 * 20;
 
 	void regular_test(uint64_t max)
 	{
@@ -30,6 +30,20 @@ private:
         }
         phase();
 
+        vector<future<string>> tasks;
+        for(i=5; i<=200; i+=3) {
+            tasks.emplace_back(store.getTask(i*50));
+            tasks.emplace_back(store.getTask((i+1)*50));
+            tasks.emplace_back(store.getTask((i+2)*50));
+            store.putTask(i+5*i, std::string(i+5*i+1, 's'));
+        }
+
+
+        for(i=5; i<=100; ++i) {
+            EXPECT(std::string((i*50)+1, 's'), tasks[i-5].get());
+        }
+        phase();
+
         // Test after all insertions
         /*for (i = 0; i < max; ++i)
             EXPECT(std::string(i+1, 's'), store.get(i));
@@ -46,15 +60,11 @@ private:
 
 		//Test deletions
 		for (i = 0; i < max; i+=2)
-			EXPECT(true, store.del(i));
+			store.del(i);
 
 		for (i = 0; i < max; ++i)
 			EXPECT((i & 1) ? std::string(i+1, 's') : not_found,
 			       store.get(i));
-        phase();
-		for (i = 1; i < max; ++i)
-			EXPECT(i & 1, store.del(i));
-
 		phase();
 
 		report();
